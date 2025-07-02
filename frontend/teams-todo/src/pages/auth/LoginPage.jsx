@@ -1,9 +1,8 @@
-// src/pages/auth/LoginPage.jsx
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../../redux/features/auth/authThunks';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -13,7 +12,8 @@ const LoginPage = () => {
   const { register, handleSubmit } = useForm();
 
   const onSubmit = data => {
-    dispatch(loginUser(data)).unwrap()
+    dispatch(loginUser(data))
+      .unwrap()
       .then(() => navigate('/app/dashboard'))
       .catch(() => {});
   };
@@ -52,6 +52,14 @@ const LoginPage = () => {
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
+
+      {/* 🔗 Link to Register */}
+      <p className="mt-6 text-center text-gray-400">
+        Don’t have an account?{' '}
+        <Link to="/register" className="text-blue-400 hover:underline">
+          Register
+        </Link>
+      </p>
     </div>
   );
 };
