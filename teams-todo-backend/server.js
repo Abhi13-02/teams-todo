@@ -4,6 +4,7 @@ dotenv.config();
 import connectDB from "./config/db.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import userRoutes from "./routes/userRoutes.js";
+import taskRoutes from "./routes/taskRoutes.js";
 import cookieParser from "cookie-parser";
 import cors from 'cors';
 
@@ -27,6 +28,7 @@ app.use(cors({
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Error handlers
 app.use(notFound);

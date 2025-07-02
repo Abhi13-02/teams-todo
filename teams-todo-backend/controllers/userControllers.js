@@ -138,10 +138,33 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
 });
 
+// Get all users (for assignee dropdown)
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({}, '_id name email pic'); 
+  res.status(200).json(users);
+});
+
+// Get single user by ID
+const getUserById = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id).select('-password');
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  res.status(200).json(user);
+});
+
+
 export {
-  registerUser,
   loginUser,
+  registerUser,
   logoutUser,
   getUserProfile,
   updateProfile,
+  getAllUsers,      
+  getUserById       
 };
+
+

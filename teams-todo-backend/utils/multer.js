@@ -6,7 +6,7 @@ import cloudinary from "./cloudinaryCofig.js";
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "Basic_auth", // Change "new_project_folder" to your desired folder name
+    folder: "tasks-todo",
     format: async (req, file) => {
       const format = file.mimetype.split("/")[1];
       return format === "jpeg" ? "jpg" : format;
