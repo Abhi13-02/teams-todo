@@ -23,12 +23,12 @@ const taskSchema = new Schema({
     required: true
   },
 
-  // Who is responsible for completing it
-  assignee: {
+  // Who is responsible for completing it (now multiple users)
+  assignees: [{
     type: Types.ObjectId,
     ref: 'User',
     required: true
-  },
+  }],
 
   // Optional future “team” or “org” scoping
   organization: {

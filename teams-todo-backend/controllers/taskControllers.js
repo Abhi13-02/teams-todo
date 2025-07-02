@@ -5,29 +5,25 @@ import Task from '../models/TaskModel.js';
 // @route   POST /api/tasks
 // @access  Private
 export const createTask = asyncHandler(async (req, res) => {
-  const { title, description, dueDate, priority, assignee } = req.body;
+  const { title, description, dueDate, priority, assignees } = req.body;
 
-  // Check required fields
-  if (!title || !description || !dueDate || !priority || !assignee) {
+  if (!title || !description || !dueDate || !priority || !assignees || !Array.isArray(assignees) || assignees.length === 0) {
     res.status(400);
-    throw new Error('Please fill all required fields');
+    throw new Error('Please fill all required fields and assign at least one user');
   }
 
-  // Validate status (if provided)
   const validStatuses = ['Todo', 'In Progress', 'Done'];
   if (req.body.status && !validStatuses.includes(req.body.status)) {
     res.status(400);
     throw new Error('Invalid status');
   }
 
-  // Validate priority
   const validPriorities = ['Low', 'Medium', 'High'];
   if (!validPriorities.includes(priority)) {
     res.status(400);
     throw new Error('Invalid priority');
   }
 
-  // Validate dueDate
   if (isNaN(new Date(dueDate))) {
     res.status(400);
     throw new Error('Invalid due date');
@@ -39,7 +35,7 @@ export const createTask = asyncHandler(async (req, res) => {
     dueDate,
     priority,
     status: req.body.status || 'Todo',
-    assignee,
+    assignees,
     reporter: req.user._id,
   });
 
@@ -62,10 +58,9 @@ export const getTasks = asyncHandler(async (req, res) => {
     };
   }
 
-  // TODO: Later, filter by req.user.organizations
   const tasks = await Task.find(filter)
-    .populate('assignee', 'name profilePic')
-    .populate('reporter', 'name');
+    .populate('assignees', 'name profilePic')
+    .populate('reporter', 'name profilePic');
 
   res.json(tasks);
 });
@@ -75,19 +70,18 @@ export const getTasks = asyncHandler(async (req, res) => {
 // @access  Private
 export const getTaskById = asyncHandler(async (req, res) => {
   const task = await Task.findById(req.params.id)
-    .populate('assignee', 'name profilePic')
-    .populate('reporter', 'name');
+    .populate('assignees', 'name profilePic')
+    .populate('reporter', 'name profilePic');
 
   if (!task) {
     res.status(404);
     throw new Error('Task not found');
   }
 
-  // TODO: Later, check if user belongs to same organization
   res.json(task);
 });
 
-// @desc    Update a task (only by reporter or assignee)
+// @desc    Update a task (assignees can update status, only reporter can edit others)
 // @route   PUT /api/tasks/:id
 // @access  Private
 export const updateTask = asyncHandler(async (req, res) => {
@@ -98,11 +92,11 @@ export const updateTask = asyncHandler(async (req, res) => {
   }
 
   const isReporter = task.reporter.toString() === req.user._id.toString();
-  const isAssignee = task.assignee.toString() === req.user._id.toString();
+  const isAssignee = task.assignees.map(a => a.toString()).includes(req.user._id.toString());
 
   if (!isReporter && !isAssignee) {
     res.status(403);
-    throw new Error('Only reporter or assignee can update task');
+    throw new Error('You are not authorized to update this task');
   }
 
   const {
@@ -111,15 +105,22 @@ export const updateTask = asyncHandler(async (req, res) => {
     dueDate,
     priority,
     status,
-    assignee
+    assignees
   } = req.body;
 
-  if (title !== undefined) task.title = title;
-  if (description !== undefined) task.description = description;
-  if (dueDate !== undefined) task.dueDate = dueDate;
-  if (priority !== undefined) task.priority = priority;
-  if (status !== undefined) task.status = status;
-  if (assignee && isReporter) task.assignee = assignee;
+  if (status !== undefined && (isReporter || isAssignee)) {
+    task.status = status;
+  }
+
+  if (isReporter) {
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (dueDate !== undefined) task.dueDate = dueDate;
+    if (priority !== undefined) task.priority = priority;
+    if (assignees !== undefined && Array.isArray(assignees)) {
+      task.assignees = assignees;
+    }
+  }
 
   const updated = await task.save();
   res.json(updated);
@@ -143,7 +144,6 @@ export const deleteTask = asyncHandler(async (req, res) => {
   await Task.deleteOne({ _id: task._id });
   res.json({ message: 'Task deleted successfully' });
 });
-
 
 // @desc    Add current user as watcher
 // @route   PUT /api/tasks/:id/watch
