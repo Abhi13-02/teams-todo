@@ -1,14 +1,38 @@
-import { useState } from 'react'
-import './App.css'
+import { Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+
+import DashboardPage from './pages/user/DashboardPage';
+import ManageTasksPage from './pages/user/ManageTasksPage';
+import KanbanPage from './pages/user/KanbanPage';
+import CreateTaskPage from './pages/user/CreateTaskPage';
+import TeamPage from './pages/user/TeamPage';
+
+import ProtectedRoute from './routes/ProtectedRoute.jsx';
+import AuthLayout from './layout/AuthLayout';
+import MainLayout from './layout/MainLayout';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-  <div>
-    hiiii
-  </div>
-  )
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+       <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      {/* Protected Layout Routes */}
+      <Route path="/app" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="tasks" element={<ManageTasksPage />} />
+        <Route path="kanban" element={<KanbanPage />} />
+        <Route path="create" element={<CreateTaskPage />} />
+        <Route path="team" element={<TeamPage />} />
+      </Route>
+    </Routes>
+  );
 }
 
-export default App
+export default App;
