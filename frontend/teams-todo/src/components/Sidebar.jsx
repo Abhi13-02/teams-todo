@@ -57,9 +57,6 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
         )}
         <p className="font-semibold text-lg">{user?.name}</p>
         <p className="text-sm opacity-70">{user?.email}</p>
-        <NavLink to="/app/profile" className="btn btn-link btn-sm">
-          View Profile
-        </NavLink>
       </div>
 
       {/* Nav Links */}
