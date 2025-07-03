@@ -1,4 +1,3 @@
-// src/pages/user/KanbanPage.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
@@ -6,9 +5,18 @@ import { useSelector } from 'react-redux';
 import TaskCard from '../../components/TaskCard';
 import LoadingScreen from '../../components/LoadingScreen';
 import FloatingFilterBar from '../../components/FloatingFilterBar';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
-const STATUS_KEYS = ['Todo','In Progress','Done'];
+
+const STATUS_KEYS = ['Todo', 'In Progress', 'Done'];
+
+const STATUS_COLORS = {
+  Todo: '#38bdf8',         // Light Neon Blue
+  'In Progress': '#a78bfa', // Violet (unique)
+  Done: '#22c55e'           // Green
+};
 
 export default function KanbanPage() {
   const [columns, setColumns] = useState({
@@ -21,11 +29,8 @@ export default function KanbanPage() {
   const [updating, setUpdating] = useState(false);
   const [sortByPriority, setSortByPriority] = useState(false);
 
-  // filters (if needed)...
-
   const { user } = useSelector(state => state.auth);
 
-  // 1️⃣ Load data and group into columns
   useEffect(() => {
     async function load() {
       try {
@@ -49,41 +54,44 @@ export default function KanbanPage() {
     load();
   }, []);
 
-  if (loading) return <LoadingScreen message="Loading board…" />;
-
-  // 2️⃣ Helper to sort by priority
   const sortTasks = arr => {
     if (!sortByPriority) return arr;
     return [...arr].sort(
-      (a,b) =>
-        ['High','Medium','Low'].indexOf(a.priority) -
-        ['High','Medium','Low'].indexOf(b.priority)
+      (a, b) =>
+        ['High', 'Medium', 'Low'].indexOf(a.priority) -
+        ['High', 'Medium', 'Low'].indexOf(b.priority)
     );
   };
 
-  // 3️⃣ Handle drag end
   const onDragEnd = async result => {
     const { source, destination, draggableId } = result;
     if (!destination) return;
-    // no-op if same place
+
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
     ) return;
 
+    const movedTask = columns[source.droppableId][source.index];
+    const isAuthorized =
+      movedTask.assignees.some(a => a._id === user._id) ||
+      movedTask.reporter._id === user._id;
+
+    if (!isAuthorized) {
+      toast.error('Only assignees or the reporter can change the task status.');
+      return;
+    }
+
     setUpdating(true);
-    // copy columns
+
     const newCols = { ...columns };
-    // remove from source
     const [moved] = newCols[source.droppableId].splice(source.index, 1);
-    // insert into destination
     newCols[destination.droppableId].splice(destination.index, 0, {
       ...moved,
       status: destination.droppableId
     });
     setColumns(newCols);
 
-    // persist status change
     try {
       await axios.put(
         `${API}/tasks/${draggableId}`,
@@ -91,8 +99,7 @@ export default function KanbanPage() {
         { withCredentials: true }
       );
     } catch {
-      // rollback on error
-      // put moved back
+      // rollback
       const rollbackCols = { ...columns };
       rollbackCols[destination.droppableId].splice(destination.index, 1);
       rollbackCols[source.droppableId].splice(source.index, 0, moved);
@@ -102,11 +109,17 @@ export default function KanbanPage() {
     }
   };
 
-  return (
-    <div className="px-4 py-8 relative text-white">
-      <h1 className="text-3xl font-bold mb-6">Kanban Board</h1>
+  if (loading) return <LoadingScreen message="Loading board…" />;
 
-      {/* filter bar (customize children) */}
+  return (
+    <div className="px-4 py-8 relative text-white min-h-screen bg-gray-900">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      
+      <h1 className="text-3xl font-bold mb-2">Kanban Board</h1>
+      <p className="text-gray-400 mb-6 text-sm sm:text-base">
+        Drag and drop tasks between columns to update their status.
+      </p>
+
       <FloatingFilterBar>
         <label className="flex items-center gap-2">
           <input
@@ -120,22 +133,22 @@ export default function KanbanPage() {
       </FloatingFilterBar>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto">
+        <div className="flex gap-4 overflow-x-auto pb-4">
           {STATUS_KEYS.map(status => (
             <Droppable droppableId={status} key={status}>
               {provided => (
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className="bg-base-200 rounded-lg p-3 flex-1 min-w-[280px] shadow"
+                  className="flex-1 min-w-[280px] rounded-lg shadow p-3"
+                  style={{
+                    backgroundColor: `${STATUS_COLORS[status]}22`,
+                    border: `2px solid ${STATUS_COLORS[status]}`
+                  }}
                 >
-                  <h2 className="text-xl font-semibold mb-3">{status}</h2>
+                  <h2 className="text-xl font-semibold mb-3 text-white">{status}</h2>
                   {sortTasks(columns[status]).map((task, index) => (
-                    <Draggable
-                      key={task._id}
-                      draggableId={task._id}
-                      index={index}
-                    >
+                    <Draggable key={task._id} draggableId={task._id} index={index}>
                       {prov => (
                         <div
                           ref={prov.innerRef}
