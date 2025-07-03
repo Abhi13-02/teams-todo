@@ -1,33 +1,207 @@
 // src/pages/user/ManageTasksPage.jsx
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchTasks } from '../../redux/features/tasks/taskThunks';
+import React, { useEffect, useState, useMemo } from 'react';
+import axios from 'axios';
+import { differenceInCalendarDays } from 'date-fns';
+import { useSelector } from 'react-redux';
 
-const ManageTasksPage = () => {
-  const dispatch = useDispatch();
-  const { tasks, loading, error } = useSelector(state => state.tasks);
+import FloatingFilterBar from '../../components/FloatingFilterBar';
+import LoadingScreen from '../../components/LoadingScreen';
+import TaskCard from '../../components/TaskCard';
+import TaskDetailModal from '../../components/TaskDetailModal';
+
+const API = import.meta.env.VITE_API_BASE_URL;
+
+export default function ManageTasksPage() {
+  const [tasks, setTasks] = useState([]);           // always an array
+  const [users, setUsers] = useState([]);           // always an array
+  const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState(null);
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [dueSoonOnly, setDueSoonOnly] = useState(false);
+  const [myTasksFilter, setMyTasksFilter] = useState('all');
+
+  const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    dispatch(fetchTasks());
-  }, [dispatch]);
+    async function loadData() {
+      try {
+        const [tRes, uRes] = await Promise.all([
+          axios.get(`${API}/tasks`, { withCredentials: true }),
+          axios.get(`${API}/users/all`, { withCredentials: true }),
+        ]);
+        setTasks(Array.isArray(tRes.data) ? tRes.data : []);
+        setUsers(Array.isArray(uRes.data) ? uRes.data : []);
+      } catch (err) {
+        console.error('Error loading tasks/users:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!Array.isArray(tasks)) {
+      console.warn('Expected tasks to be an array but got:', tasks);
+      return [];
+    }
+    return tasks.filter((task) => {
+      // Search
+      if (search) {
+        const term = search.toLowerCase();
+        if (
+          !task.title.toLowerCase().includes(term) &&
+          !task.description.toLowerCase().includes(term)
+        )
+          return false;
+      }
+      // Priority
+      if (priorityFilter && task.priority !== priorityFilter) return false;
+      // Status
+      if (statusFilter && task.status !== statusFilter) return false;
+      // Assignee
+      if (assigneeFilter) {
+        if (!task.assignees.some((a) => a._id === assigneeFilter)) return false;
+      }
+      // Due soon
+      if (dueSoonOnly) {
+        const days = differenceInCalendarDays(
+          new Date(task.dueDate),
+          new Date()
+        );
+        if (days > 3) return false;
+      }
+      // My tasks
+      if (
+        myTasksFilter === 'assigned' &&
+        !task.assignees.some((a) => a._id === user._id)
+      )
+        return false;
+      if (myTasksFilter === 'reported' && task.reporter._id !== user._id)
+        return false;
+      return true;
+    });
+  }, [
+    tasks,
+    search,
+    priorityFilter,
+    statusFilter,
+    assigneeFilter,
+    dueSoonOnly,
+    myTasksFilter,
+    user._id,
+  ]);
+
+  if (loading) return <LoadingScreen message="Loading tasks…" />;
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Manage Tasks</h2>
-      {loading && <p className="text-blue-400">Loading tasks...</p>}
-      {error && <p className="text-red-400">{error}</p>}
+    <div className="max-w-6xl mx-auto px-4 py-10 text-white relative">
+      <h1 className="text-3xl font-bold mb-6">Manage Tasks</h1>
 
-      <ul className="space-y-4">
-        {tasks.map(task => (
-          <li key={task._id} className="p-4 bg-gray-800 rounded-lg shadow">
-            <h3 className="text-xl font-semibold">{task.title}</h3>
-            <p className="text-gray-400">{task.description}</p>
-            <p className="text-sm text-gray-500">Status: {task.status}</p>
-          </li>
-        ))}
-      </ul>
+      <FloatingFilterBar>
+        <input
+          type="text"
+          placeholder="Search tasks…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input input-bordered bg-gray-800 text-white flex-1 min-w-[150px]"
+        />
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="select select-bordered bg-gray-800 text-white"
+        >
+          <option value="">All Priorities</option>
+          {['Low', 'Medium', 'High'].map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="select select-bordered bg-gray-800 text-white"
+        >
+          <option value="">All Statuses</option>
+          {['Todo', 'In Progress', 'Done'].map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          className="select select-bordered bg-gray-800 text-white"
+        >
+          <option value="">All Assignees</option>
+          {users.map((u) => (
+            <option key={u._id} value={u._id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="checkbox checkbox-sm checkbox-primary"
+            checked={dueSoonOnly}
+            onChange={(e) => setDueSoonOnly(e.target.checked)}
+          />
+          <span className="text-sm">Due in 3 days</span>
+        </label>
+        <select
+          value={myTasksFilter}
+          onChange={(e) => setMyTasksFilter(e.target.value)}
+          className="select select-bordered bg-gray-800 text-white"
+        >
+          <option value="all">All Tasks</option>
+          <option value="assigned">Assigned to me</option>
+          <option value="reported">Created by me</option>
+        </select>
+      </FloatingFilterBar>
+
+      {filtered.length === 0 ? (
+        <p className="text-center text-gray-400">
+          No tasks match your filters.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((task) => (
+            <div
+              key={task._id}
+              onClick={() => setSelectedTask(task)}
+              className="cursor-pointer"
+            >
+              <TaskCard task={task} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          users={users}
+          onClose={() => setSelectedTask(null)}
+          onUpdated={(updated) => {
+            setTasks((ts) =>
+              ts.map((t) => (t._id === updated._id ? updated : t))
+            );
+            setSelectedTask(updated);
+          }}
+          onDeleted={(id) => {
+            setTasks((ts) => ts.filter((t) => t._id !== id));
+            setSelectedTask(null);
+          }}
+        />
+      )}
     </div>
   );
-};
-
-export default ManageTasksPage;
+}

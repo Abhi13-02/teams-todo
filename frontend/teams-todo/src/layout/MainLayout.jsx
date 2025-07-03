@@ -30,9 +30,6 @@ const MainLayout = () => {
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="hidden md:flex items-center space-x-4">
-            <span className="text-sm text-gray-400">Welcome, User</span>
-          </div>
         </header>
 
         {/* Page Content */}

@@ -81,50 +81,65 @@ export const getTaskById = asyncHandler(async (req, res) => {
   res.json(task);
 });
 
+// controllers/taskControllers.js
+
 // @desc    Update a task (assignees can update status, only reporter can edit others)
 // @route   PUT /api/tasks/:id
 // @access  Private
 export const updateTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id);
-  if (!task) {
-    res.status(404);
-    throw new Error('Task not found');
-  }
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      res.status(404);
+      throw new Error('Task not found');
+    }
 
-  const isReporter = task.reporter.toString() === req.user._id.toString();
-  const isAssignee = task.assignees.map(a => a.toString()).includes(req.user._id.toString());
+    const isReporter = task.reporter.toString() === req.user._id.toString();
+    const isAssignee = task.assignees
+      .map(a => a.toString())
+      .includes(req.user._id.toString());
 
-  if (!isReporter && !isAssignee) {
-    res.status(403);
-    throw new Error('You are not authorized to update this task');
-  }
+    if (!isReporter && !isAssignee) {
+      res.status(403);
+      throw new Error('You are not authorized to update this task');
+    }
 
-  const {
-    title,
-    description,
-    dueDate,
-    priority,
-    status,
-    assignees
-  } = req.body;
+    const { title, description, dueDate, priority, status, assignees } = req.body;
 
-  if (status !== undefined && (isReporter || isAssignee)) {
-    task.status = status;
-  }
+    // allow status change by reporter or assignee
+    if (status !== undefined && (isReporter || isAssignee)) {
+      task.status = status;
+    }
 
-  if (isReporter) {
-    if (title !== undefined) task.title = title;
-    if (description !== undefined) task.description = description;
-    if (dueDate !== undefined) task.dueDate = dueDate;
-    if (priority !== undefined) task.priority = priority;
-    if (assignees !== undefined && Array.isArray(assignees)) {
-      task.assignees = assignees;
+    // only reporter can change everything else
+    if (isReporter) {
+      if (title !== undefined)       task.title       = title;
+      if (description !== undefined) task.description = description;
+      if (dueDate !== undefined)     task.dueDate     = dueDate;
+      if (priority !== undefined)    task.priority    = priority;
+      if (assignees !== undefined && Array.isArray(assignees)) {
+        task.assignees = assignees; 
+      }
+    }
+
+    await task.save();
+
+    // Re-fetch with populate
+    const populated = await Task.findById(task._id)
+      .populate('assignees', 'name profilePic')
+      .populate('reporter',  'name profilePic');
+
+    res.json(populated);
+
+  } catch (err) {
+    console.error('❌ Error in updateTask:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: err.message || 'Server error on update' });
     }
   }
-
-  const updated = await task.save();
-  res.json(updated);
 });
+
+
 
 // @desc    Delete task (only reporter)
 // @route   DELETE /api/tasks/:id

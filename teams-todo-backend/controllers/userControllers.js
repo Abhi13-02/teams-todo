@@ -140,7 +140,7 @@ const updateProfile = asyncHandler(async (req, res) => {
 
 // Get all users (for assignee dropdown)
 const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({}, '_id name email pic'); 
+  const users = await User.find({}, '_id name email profilePic role'); 
   res.status(200).json(users);
 });
 
