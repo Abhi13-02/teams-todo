@@ -1,6 +1,6 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import React from 'react'
+import { NavLink } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -9,8 +9,9 @@ import {
   Users,
   LogOut,
   UserCircle,
-  X,
-} from 'lucide-react';
+  ChevronsLeft,
+  ChevronsRight
+} from 'lucide-react'
 
 const navItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard' },
@@ -18,76 +19,86 @@ const navItems = [
   { name: 'Kanban', icon: KanbanSquare, path: '/app/kanban' },
   { name: 'Create Task', icon: PlusSquare, path: '/app/create' },
   { name: 'Team', icon: Users, path: '/app/team' },
-];
+]
 
-const Sidebar = ({ sidebarOpen, onClose, onLogout }) => {
-  const { user } = useSelector(state => state.auth);
+const Sidebar = ({ isOpen, onToggle, onLogout }) => {
+  const { user } = useSelector((state) => state.auth)
 
   return (
     <aside
-      className={`fixed z-40 md:static w-64 bg-gray-900 shadow-lg transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      className={`${
+        isOpen ? 'w-64' : 'w-20'
+      } h-full bg-base-200 border-r border-base-300 transition-all duration-300 flex flex-col relative`}
     >
-      {/* Sidebar Header */}
-      <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-white">TeamTasks</h2>
-        <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white">
-          <X />
-        </button>
+      {/* Toggle button (inside sidebar) */}
+      <button
+        onClick={onToggle}
+        className="absolute -right-4 top-4 z-50 bg-base-100 border border-base-300 rounded-full p-1 shadow-lg"
+      >
+        {isOpen ? <ChevronsLeft /> : <ChevronsRight />}
+      </button>
+
+      {/* Header */}
+      <div className="p-4 border-b border-base-300 flex justify-center items-center">
+        <h2 className={`text-xl font-bold transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
+          TeamTasks
+        </h2>
       </div>
 
-      {/* Profile Section */}
-      <div className="flex flex-col items-center p-4">
+      {/* Profile */}
+      <div className="flex flex-col items-center p-4 space-y-2">
         {user?.profilePic ? (
           <img
             src={user.profilePic}
             alt="Profile"
-            className="w-20 h-20 rounded-full object-cover border border-gray-600 mb-2"
+            className="w-16 h-16 rounded-full object-cover border border-gray-400"
           />
         ) : (
-          <UserCircle className="w-20 h-20 text-gray-500 mb-2" />
+          <UserCircle className="w-16 h-16 text-gray-500" />
         )}
-
-        <p className="font-semibold text-lg text-white">
-          {user?.name || 'User Name'}
-        </p>
-        <p className="text-sm text-gray-400 mb-2">
-          {user?.email || 'user@email.com'}
-        </p>
-        <button className="text-sm text-blue-400 hover:underline mb-2">
-          View Profile
-        </button>
+        {isOpen && (
+          <>
+            <p className="font-semibold text-lg">{user?.name || 'User Name'}</p>
+            <p className="text-sm opacity-70">{user?.email || 'user@email.com'}</p>
+            <NavLink to="/app/profile" className="btn btn-link btn-sm">
+              View Profile
+            </NavLink>
+          </>
+        )}
       </div>
 
-      {/* Navigation */}
-      <nav className="mt-4 space-y-1 px-4">
+      {/* Nav Links */}
+      <nav className="flex-1 px-2 space-y-1">
         {navItems.map(({ name, icon: Icon, path }) => (
           <NavLink
             key={name}
             to={path}
             className={({ isActive }) =>
-              `flex items-center px-3 py-2 rounded-lg transition text-sm font-medium
-              ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+              `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                isActive
+                  ? 'bg-primary text-white'
+                  : 'text-gray-700 hover:bg-base-300'
+              }`
             }
           >
-            <Icon className="w-5 h-5 mr-2" />
-            {name}
+            <Icon className="w-5 h-5" />
+            {isOpen && <span>{name}</span>}
           </NavLink>
         ))}
       </nav>
 
       {/* Logout */}
-      <div className="mt-auto p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-base-300">
         <button
           onClick={onLogout}
-          className="flex items-center text-red-400 hover:text-red-500 text-sm"
+          className="flex items-center text-error gap-3 w-full"
         >
-          <LogOut className="w-5 h-5 mr-2" />
-          Logout
+          <LogOut className="w-5 h-5" />
+          {isOpen && <span>Logout</span>}
         </button>
       </div>
     </aside>
-  );
-};
+  )
+}
 
-export default Sidebar;
+export default Sidebar
