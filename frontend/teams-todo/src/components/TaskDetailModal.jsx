@@ -1,20 +1,21 @@
-// src/components/TaskDetailModal.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { formatISO } from 'date-fns';
-import { X } from 'lucide-react';
+import { X, Users } from 'lucide-react';
 import LoadingScreen from './LoadingScreen';
+import { useSelector } from 'react-redux';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
 export default function TaskDetailModal({
   task,
-  users,        // <-- pull users from props
+  users,
   onClose,
   onUpdated,
   onDeleted
 }) {
-  // Form state
+  const { user: currentUser } = useSelector(state => state.auth);
+
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -23,11 +24,15 @@ export default function TaskDetailModal({
     status: '',
     assignees: []
   });
+
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showAssigneeEditor, setShowAssigneeEditor] = useState(false);
+  const [showPermissionError, setShowPermissionError] = useState(false);
 
-  // Initialize form when `task` changes
+  const isReporter = task?.reporter?._id === currentUser?._id;
+
   useEffect(() => {
     if (!task) return;
     setForm({
@@ -41,55 +46,45 @@ export default function TaskDetailModal({
     setDirty(false);
   }, [task]);
 
-  // Handle field changes
   const handleChange = e => {
-    const { name, value, type, checked } = e.target;
-    let v = type === 'checkbox' ? checked : value;
-
-    if (name === 'assignees') {
-      const id = value;
-      v = form.assignees.includes(id)
-        ? form.assignees.filter(a => a !== id)
-        : [...form.assignees, id];
-    }
-
-    setForm(prev => ({ ...prev, [name]: v }));
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
     setDirty(true);
   };
 
-  // Save updates
+  const toggleAssignee = id => {
+    setForm(prev => ({
+      ...prev,
+      assignees: prev.assignees.includes(id)
+        ? prev.assignees.filter(a => a !== id)
+        : [...prev.assignees, id]
+    }));
+    setDirty(true);
+  };
+
   const save = async () => {
-  setSaving(true);
-  try {
-    const payload = { 
-        title: form.title,
-        description: form.description,
-        dueDate: form.dueDate,
-        priority: form.priority,
-        status: form.status,
-        assignees: form.assignees
-     };
-    const res = await axios.put(
-      `${API}/tasks/${task._id}`,
-      payload,
-      { withCredentials: true }
-    );
-    onUpdated(res.data);
-    setDirty(false);
-  } catch (err) {
-    console.error('Save error response:', err.response?.data);
-    const msg =
-      err.response?.data?.message ||
-      JSON.stringify(err.response?.data) ||
-      'Unknown server error';
-    alert(`Unable to save: ${msg}`);
-  } finally {
-    setSaving(false);
-  }
-};
+    if (!isReporter) {
+      setShowPermissionError(true);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await axios.put(
+        `${API}/tasks/${task._id}`,
+        form,
+        { withCredentials: true }
+      );
+      onUpdated(res.data);
+      setDirty(false);
+      setShowAssigneeEditor(false);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-
-  // Delete with confirmation
   const remove = async () => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
     setDeleting(true);
@@ -97,147 +92,183 @@ export default function TaskDetailModal({
       await axios.delete(`${API}/tasks/${task._id}`, { withCredentials: true });
       onDeleted(task._id);
     } catch (err) {
-      console.error(err);
       alert('Delete failed');
       setDeleting(false);
     }
   };
 
-  // If no task or in mid‐save/delete, show loading
-  if (!task) return null;
-  if (saving || deleting) {
-    return (
-      <LoadingScreen
-        message={deleting ? 'Deleting…' : 'Saving…'}
-      />
-    );
+  if (!task || saving || deleting) {
+    return <LoadingScreen message={deleting ? 'Deleting…' : 'Saving…'} />;
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-base-200 rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6
-                      transform transition-transform duration-200 ease-out scale-100 animate-fade-in-up">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Task Details</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <div className="space-y-4">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-semibold mb-1">Title</label>
-            <input
-              type="text"
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              className="input input-bordered w-full bg-gray-800 text-white"
-            />
+    <>
+      <div className="fixed inset-0 flex items-center justify-center z-50">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-base-200 rounded-lg shadow-xl w-full max-w-2xl mx-4 p-4 sm:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Task Details</h2>
+            <button onClick={onClose}><X size={24} /></button>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold mb-1">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              className="textarea textarea-bordered w-full bg-gray-800 text-white"
-              rows={4}
-            />
-          </div>
-
-          {/* Due Date, Priority, Status */}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold mb-1">Due Date</label>
+          <div className="space-y-4">
+            {/* Title */}
+            <div>
+              <label className="label-text">Title</label>
               <input
-                type="date"
-                name="dueDate"
-                value={form.dueDate}
+                type="text"
+                name="title"
+                value={form.title}
                 onChange={handleChange}
                 className="input input-bordered w-full bg-gray-800 text-white"
+                disabled={!isReporter}
               />
             </div>
-            <div className="w-1/2 sm:w-1/4">
-              <label className="block text-sm font-semibold mb-1">Priority</label>
-              <select
-                name="priority"
-                value={form.priority}
+
+            {/* Description */}
+            <div>
+              <label className="label-text">Description</label>
+              <textarea
+                name="description"
+                value={form.description}
                 onChange={handleChange}
-                className="select select-bordered w-full bg-gray-800 text-white"
-              >
-                {['Low','Medium','High'].map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+                rows={3}
+                className="textarea textarea-bordered w-full bg-gray-800 text-white"
+                disabled={!isReporter}
+              />
             </div>
-            <div className="w-1/2 sm:w-1/4">
-              <label className="block text-sm font-semibold mb-1">Status</label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="select select-bordered w-full bg-gray-800 text-white"
-              >
-                {['Todo','In Progress','Done'].map(s => (
-                  <option key={s} value={s}>{s}</option>
+
+            {/* Date / Priority / Status */}
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1">
+                <label className="label-text">Due Date</label>
+                <input
+                  type="date"
+                  name="dueDate"
+                  value={form.dueDate}
+                  onChange={handleChange}
+                  className="input input-bordered w-full bg-gray-800 text-white"
+                  disabled={!isReporter}
+                />
+              </div>
+              <div className="w-1/2 sm:w-1/4">
+                <label className="label-text">Priority</label>
+                <select
+                  name="priority"
+                  value={form.priority}
+                  onChange={handleChange}
+                  className="select select-bordered w-full bg-gray-800 text-white"
+                  disabled={!isReporter}
+                >
+                  {['Low', 'Medium', 'High'].map(p => <option key={p}>{p}</option>)}
+                </select>
+              </div>
+              <div className="w-1/2 sm:w-1/4">
+                <label className="label-text">Status</label>
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={handleChange}
+                  className="select select-bordered w-full bg-gray-800 text-white"
+                >
+                  {['Todo', 'In Progress', 'Done'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Reporter */}
+            {task.reporter && (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span>Reporter:</span>
+                <img
+                  src={task.reporter.profilePic || '/default-avatar.png'}
+                  alt={task.reporter.name}
+                  className="w-6 h-6 rounded-full"
+                />
+                <span>{task.reporter.name}</span>
+              </div>
+            )}
+
+            {/* Assignees */}
+            <div>
+              <label className="label-text">Assignees</label>
+              <div className="flex items-center gap-2">
+                {task.assignees.map(a => (
+                  <img
+                    key={a._id}
+                    src={a.profilePic || '/default-avatar.png'}
+                    alt={a.name}
+                    title={a.name}
+                    className="w-8 h-8 rounded-full border-2 border-base-200 -ml-2 first:ml-0"
+                  />
                 ))}
-              </select>
+                {isReporter && (
+                  <button
+                    onClick={() => setShowAssigneeEditor(p => !p)}
+                    className="btn btn-sm btn-outline ml-2"
+                  >
+                    <Users size={16} className="mr-1" />
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              {/* Assignee dropdown */}
+              {showAssigneeEditor && isReporter && (
+                <div className="mt-2 bg-gray-800 p-3 rounded space-y-2 max-h-40 overflow-y-auto">
+                  {users.map(u => (
+                    <label key={u._id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        value={u._id}
+                        checked={form.assignees.includes(u._id)}
+                        onChange={() => toggleAssignee(u._id)}
+                        className="checkbox checkbox-sm checkbox-primary"
+                      />
+                      <img
+                        src={u.profilePic || '/default-avatar.png'}
+                        className="w-6 h-6 rounded-full"
+                      />
+                      <span>{u.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Assignees */}
-          <div>
-            <label className="block text-sm font-semibold mb-1">Assignees</label>
-            <div className="flex flex-wrap gap-2 bg-gray-800 p-2 rounded">
-              {users.map(u => {
-                const checked = form.assignees.includes(u._id);
-                return (
-                  <label key={u._id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="assignees"
-                      value={u._id}
-                      checked={checked}
-                      onChange={handleChange}
-                      className="checkbox checkbox-sm checkbox-primary"
-                    />
-                    <img
-                      src={u.profilePic || '/default-avatar.png'}
-                      alt={u.name}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  </label>
-                );
-              })}
-            </div>
+          {/* Buttons */}
+          <div className="mt-6 flex justify-between">
+            {isReporter && (
+              <button onClick={remove} className="btn btn-outline btn-error">
+                Delete
+              </button>
+            )}
+            {dirty && (
+              <button onClick={save} className="btn btn-primary ml-auto">
+                Save Changes
+              </button>
+            )}
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-6 flex justify-between items-center">
-          <button onClick={remove} className="btn btn-outline btn-error">
-            Delete
-          </button>
-          {dirty && (
-            <button onClick={save} className="btn btn-primary">
-              Save Changes
-            </button>
-          )}
         </div>
       </div>
-    </div>
+
+      {/* DaisyUI Modal for non-reporter */}
+      {showPermissionError && (
+        <div className="modal modal-open">
+          <div className="modal-box bg-base-300 text-white">
+            <h3 className="font-bold text-lg">Permission Denied</h3>
+            <p className="py-4">
+              Only the reporter can update this task's details.
+            </p>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowPermissionError(false)}>
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

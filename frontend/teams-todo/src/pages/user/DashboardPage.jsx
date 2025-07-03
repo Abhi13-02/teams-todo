@@ -12,21 +12,22 @@ import { useSelector } from 'react-redux';
 const API = import.meta.env.VITE_API_BASE_URL;
 
 const STATUS_COLORS = {
-  Todo: '#8b5cf6',         // purple
-  'In Progress': '#14b8a6',// teal
-  Done: '#84cc16'          // lime
+  Todo: '#8b5cf6',
+  'In Progress': '#14b8a6',
+  Done: '#84cc16'
 };
 
 const PRIORITY_COLORS = {
-  Low: '#10b981',   // green
-  Medium: '#f59e0b',// amber
-  High: '#ef4444'   // red
+  Low: '#10b981',
+  Medium: '#f59e0b',
+  High: '#ef4444'
 };
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewFilter, setViewFilter] = useState('assigned');
+  const [showGraphs, setShowGraphs] = useState(false);
   const { user } = useSelector(state => state.auth);
 
   useEffect(() => {
@@ -77,14 +78,14 @@ export default function DashboardPage() {
   if (loading) return <LoadingScreen message="Loading dashboard…" />;
 
   return (
-    <div className="p-6 space-y-8 text-white bg-gray-900 min-h-screen">
-      <div>
-        <h1 className="text-4xl font-bold">Good Morning, {user.name}!</h1>
-        <p className="text-gray-400">{format(new Date(), "EEEE do MMM yyyy")}</p>
+    <div className="p-4 sm:p-6 space-y-8 text-white bg-gray-900 min-h-screen overflow-x-hidden">
+      <div className="space-y-1">
+        <h1 className="text-3xl sm:text-4xl font-bold">Good Morning, {user.name}!</h1>
+        <p className="text-gray-400 text-sm sm:text-base">{format(new Date(), "EEEE do MMM yyyy")}</p>
       </div>
 
       <FloatingFilterBar>
-        <div className="tabs tabs-boxed">
+        <div className="tabs tabs-boxed overflow-x-auto whitespace-nowrap">
           <button className={`tab ${viewFilter === 'assigned' ? 'tab-active' : ''}`} onClick={() => setViewFilter('assigned')}>
             Assigned to Me ({assignedCount})
           </button>
@@ -97,105 +98,113 @@ export default function DashboardPage() {
         </div>
       </FloatingFilterBar>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[{ label: 'Total Tasks', value: total, color: STATUS_COLORS.Todo },
-          { label: 'Pending', value: pending, color: STATUS_COLORS.Todo },
-          { label: 'In Progress', value: inProgress, color: STATUS_COLORS['In Progress'] },
-          { label: 'Completed', value: completed, color: STATUS_COLORS.Done },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-gray-800 rounded-lg shadow p-6 flex items-center">
-            <div className="w-3 h-12 rounded-full mr-4" style={{ backgroundColor: color }} />
-            <div>
-              <p className="text-gray-400">{label}</p>
-              <p className="text-2xl font-bold text-white">{value}</p>
-            </div>
+       <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
+            {[{ label: 'Total Tasks', value: 0, color: '#8b5cf6' },
+              { label: 'Pending', value: 0, color: '#8b5cf6' },
+              { label: 'In Progress', value: 0, color: '#14b8a6' },
+              { label: 'Completed', value: 0, color: '#84cc16' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-gray-800 rounded-lg shadow p-2 sm:p-4 flex items-center min-w-0">
+                <div className="w-2 sm:w-3 h-8 sm:h-10 rounded-full mr-2 sm:mr-3" style={{ backgroundColor: color }} />
+                <div className="truncate">
+                  <p className="text-gray-400 text-xs sm:text-sm truncate">{label}</p>
+                  <p className="text-lg sm:text-xl font-bold text-white truncate">{value}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+
+      <div className="block sm:hidden">
+        <button onClick={() => setShowGraphs(!showGraphs)} className="btn btn-outline w-full">
+          {showGraphs ? 'Hide Charts' : 'Show Charts'}
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gray-800 p-6 rounded-lg shadow text-white">
-          <h2 className="text-xl font-semibold mb-4">Task Distribution</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                innerRadius={50}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                labelLine={false}
-              >
-                {pieData.map((entry, idx) => (
-                  <Cell
-                    key={idx}
-                    fill={
-                      STATUS_COLORS[
-                        entry.name === 'Pending'
-                          ? 'Todo'
-                          : entry.name === 'In Progress'
-                            ? 'In Progress'
-                            : 'Done'
-                      ]
-                    }
-                  />
-                ))}
-              </Pie>
-              <PieTooltip contentStyle={{ backgroundColor: '#1f2937', color: '#fff', borderRadius: '0.5rem' }} itemStyle={{ color: '#fff' }} />
-              <PieLegend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ color: 'white' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+      {(showGraphs || window.innerWidth >= 640) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow text-white">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Task Distribution</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  innerRadius={50}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, idx) => (
+                    <Cell
+                      key={idx}
+                      fill={
+                        STATUS_COLORS[
+                          entry.name === 'Pending'
+                            ? 'Todo'
+                            : entry.name === 'In Progress'
+                              ? 'In Progress'
+                              : 'Done'
+                        ]
+                      }
+                    />
+                  ))}
+                </Pie>
+                <PieTooltip contentStyle={{ backgroundColor: '#1f2937', color: '#fff', borderRadius: '0.5rem' }} itemStyle={{ color: '#fff' }} />
+                <PieLegend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ color: 'white' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div className="bg-gray-800 p-6 rounded-lg shadow text-white">
-          <h2 className="text-xl font-semibold mb-4">Task Priority Levels</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={priorityCounts} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#fff" />
-              <YAxis stroke="#fff" allowDecimals={false} />
-              <BarTooltip contentStyle={{ backgroundColor: '#1f2937', color: '#fff', borderRadius: '0.5rem' }} itemStyle={{ color: '#fff' }} />
-              <Bar dataKey="value">
-                {priorityCounts.map((entry, idx) => (
-                  <Cell key={idx} fill={PRIORITY_COLORS[entry.name]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow text-white">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Task Priority Levels</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={priorityCounts} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#fff" />
+                <YAxis stroke="#fff" allowDecimals={false} />
+                <BarTooltip contentStyle={{ backgroundColor: '#1f2937', color: '#fff', borderRadius: '0.5rem' }} itemStyle={{ color: '#fff' }} />
+                <Bar dataKey="value">
+                  {priorityCounts.map((entry, idx) => (
+                    <Cell key={idx} fill={PRIORITY_COLORS[entry.name]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Task Table */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow text-white">
-        <h2 className="text-xl font-semibold mb-4">Tasks</h2>
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow text-white">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4">Tasks</h2>
         <div className="overflow-x-auto">
-          <table className="table w-full">
+          <table className="table w-full min-w-[500px]">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Due Date</th>
+                <th className="text-sm sm:text-base">Title</th>
+                <th className="text-sm sm:text-base">Status</th>
+                <th className="text-sm sm:text-base">Priority</th>
+                <th className="text-sm sm:text-base">Due Date</th>
               </tr>
             </thead>
             <tbody>
               {filteredTasks.map(task => (
                 <tr key={task._id} className="hover">
-                  <td>{task.title}</td>
+                  <td className="text-sm sm:text-base whitespace-nowrap">{task.title}</td>
                   <td>
-                    <span className="badge text-white" style={{ backgroundColor: STATUS_COLORS[task.status] }}>
+                    <span className="badge text-white text-xs sm:text-sm break-words max-w-[80px]" style={{ backgroundColor: STATUS_COLORS[task.status] }}>
                       {task.status}
                     </span>
                   </td>
                   <td>
-                    <span className="badge text-white" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}>
+                    <span className="badge text-white text-xs sm:text-sm" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}>
                       {task.priority}
                     </span>
                   </td>
-                  <td>{format(new Date(task.dueDate), 'dd MMM yyyy')}</td>
+                  <td className="text-sm sm:text-base whitespace-nowrap">{format(new Date(task.dueDate), 'dd MMM yyyy')}</td>
                 </tr>
               ))}
               {filteredTasks.length === 0 && (

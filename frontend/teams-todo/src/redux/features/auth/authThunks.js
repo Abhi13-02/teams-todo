@@ -34,3 +34,19 @@ export const registerUser = createAsyncThunk(
     }
   }
 );
+
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchCurrentUser',
+  async (_, thunkAPI) => {
+    try {
+      const res = await axios.get(`${API}/users/profile`, {
+        withCredentials: true,
+      });
+      return res.data;
+    } catch (err) {
+      // if cookie expired or invalid, treat as logged out
+      return thunkAPI.rejectWithValue(null);
+    }
+  }
+);
+
