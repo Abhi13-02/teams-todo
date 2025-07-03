@@ -12,15 +12,15 @@ import { useSelector } from 'react-redux';
 const API = import.meta.env.VITE_API_BASE_URL;
 
 const STATUS_COLORS = {
-  Todo: '#8b5cf6',
-  'In Progress': '#14b8a6',
-  Done: '#84cc16'
+  Todo: '#38bdf8',            // Light Neon Blue
+  'In Progress': '#a78bfa',  // Violet, distinct from layout
+  Done: '#22c55e'            // Green
 };
 
 const PRIORITY_COLORS = {
-  Low: '#10b981',
-  Medium: '#f59e0b',
-  High: '#ef4444'
+  Low: '#fef08a',     // Light Yellow
+  Medium: '#f97316',  // Orange
+  High: '#dc2626'     // Red
 };
 
 export default function DashboardPage() {
@@ -59,15 +59,15 @@ export default function DashboardPage() {
   }, [tasks, user._id, viewFilter]);
 
   const total = filteredTasks.length;
-  const pending = filteredTasks.filter(t => t.status === 'Todo').length;
+  const todo = filteredTasks.filter(t => t.status === 'Todo').length;
   const inProgress = filteredTasks.filter(t => t.status === 'In Progress').length;
-  const completed = filteredTasks.filter(t => t.status === 'Done').length;
+  const done = filteredTasks.filter(t => t.status === 'Done').length;
 
   const pieData = useMemo(() => [
-    { name: 'Pending', value: pending },
+    { name: 'Todo', value: todo },
     { name: 'In Progress', value: inProgress },
-    { name: 'Completed', value: completed },
-  ], [pending, inProgress, completed]);
+    { name: 'Done', value: done },
+  ], [todo, inProgress, done]);
 
   const priorityCounts = useMemo(() => {
     const map = { Low: 0, Medium: 0, High: 0 };
@@ -98,21 +98,21 @@ export default function DashboardPage() {
         </div>
       </FloatingFilterBar>
 
-       <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
-            {[{ label: 'Total Tasks', value: 0, color: '#8b5cf6' },
-              { label: 'Pending', value: 0, color: '#8b5cf6' },
-              { label: 'In Progress', value: 0, color: '#14b8a6' },
-              { label: 'Completed', value: 0, color: '#84cc16' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="bg-gray-800 rounded-lg shadow p-2 sm:p-4 flex items-center min-w-0">
-                <div className="w-2 sm:w-3 h-8 sm:h-10 rounded-full mr-2 sm:mr-3" style={{ backgroundColor: color }} />
-                <div className="truncate">
-                  <p className="text-gray-400 text-xs sm:text-sm truncate">{label}</p>
-                  <p className="text-lg sm:text-xl font-bold text-white truncate">{value}</p>
-                </div>
-              </div>
-            ))}
-        </div>
+      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
+        {[{ label: 'Total Tasks', value: total, color: '#64748b' },
+          { label: 'Todo', value: todo, color: STATUS_COLORS['Todo'] },
+          { label: 'In Progress', value: inProgress, color: STATUS_COLORS['In Progress'] },
+          { label: 'Done', value: done, color: STATUS_COLORS['Done'] },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-gray-800 rounded-lg shadow p-2 sm:p-4 flex items-center min-w-0">
+            <div className="w-2 sm:w-3 h-8 sm:h-10 rounded-full mr-2 sm:mr-3" style={{ backgroundColor: color }} />
+            <div className="truncate">
+              <p className="text-gray-400 text-xs sm:text-sm truncate">{label}</p>
+              <p className="text-lg sm:text-xl font-bold text-white truncate">{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div className="block sm:hidden">
         <button onClick={() => setShowGraphs(!showGraphs)} className="btn btn-outline w-full">
@@ -140,15 +140,7 @@ export default function DashboardPage() {
                   {pieData.map((entry, idx) => (
                     <Cell
                       key={idx}
-                      fill={
-                        STATUS_COLORS[
-                          entry.name === 'Pending'
-                            ? 'Todo'
-                            : entry.name === 'In Progress'
-                              ? 'In Progress'
-                              : 'Done'
-                        ]
-                      }
+                      fill={STATUS_COLORS[entry.name]}
                     />
                   ))}
                 </Pie>
@@ -195,12 +187,26 @@ export default function DashboardPage() {
                 <tr key={task._id} className="hover">
                   <td className="text-sm sm:text-base whitespace-nowrap">{task.title}</td>
                   <td>
-                    <span className="badge text-white text-xs sm:text-sm break-words max-w-[80px]" style={{ backgroundColor: STATUS_COLORS[task.status] }}>
+                    <span
+                      className="text-white text-xs sm:text-sm px-2 py-1 rounded-full border"
+                      style={{
+                        backgroundColor: `${STATUS_COLORS[task.status]}20`,
+                        borderColor: STATUS_COLORS[task.status],
+                        color: STATUS_COLORS[task.status],
+                      }}
+                    >
                       {task.status}
                     </span>
                   </td>
                   <td>
-                    <span className="badge text-white text-xs sm:text-sm" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}>
+                    <span
+                      className="text-xs sm:text-sm px-2 py-1 rounded-full border"
+                      style={{
+                        backgroundColor: `${PRIORITY_COLORS[task.priority]}20`,
+                        borderColor: PRIORITY_COLORS[task.priority],
+                        color: PRIORITY_COLORS[task.priority],
+                      }}
+                    >
                       {task.priority}
                     </span>
                   </td>
