@@ -112,7 +112,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-          </div>
+        </div>
 
       <div className="block sm:hidden">
         <button onClick={() => setShowGraphs(!showGraphs)} className="btn btn-outline w-full">

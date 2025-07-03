@@ -4,6 +4,8 @@ import { formatISO } from 'date-fns';
 import { X, Users } from 'lucide-react';
 import LoadingScreen from './LoadingScreen';
 import { useSelector } from 'react-redux';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -29,7 +31,6 @@ export default function TaskDetailModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showAssigneeEditor, setShowAssigneeEditor] = useState(false);
-  const [showPermissionError, setShowPermissionError] = useState(false);
 
   const isReporter = task?.reporter?._id === currentUser?._id;
 
@@ -64,7 +65,7 @@ export default function TaskDetailModal({
 
   const save = async () => {
     if (!isReporter) {
-      setShowPermissionError(true);
+      toast.error('Only the reporter can update this task.');
       return;
     }
     setSaving(true);
@@ -77,9 +78,10 @@ export default function TaskDetailModal({
       onUpdated(res.data);
       setDirty(false);
       setShowAssigneeEditor(false);
+      toast.success('Task updated successfully');
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Save failed');
+      toast.error(err.response?.data?.message || 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -91,8 +93,9 @@ export default function TaskDetailModal({
     try {
       await axios.delete(`${API}/tasks/${task._id}`, { withCredentials: true });
       onDeleted(task._id);
+      toast.success('Task deleted successfully');
     } catch (err) {
-      alert('Delete failed');
+      toast.error('Delete failed');
       setDeleting(false);
     }
   };
@@ -103,6 +106,8 @@ export default function TaskDetailModal({
 
   return (
     <>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+
       <div className="fixed inset-0 flex items-center justify-center z-50">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
         <div className="relative bg-base-200 rounded-lg shadow-xl w-full max-w-2xl mx-4 p-4 sm:p-6">
@@ -138,7 +143,7 @@ export default function TaskDetailModal({
               />
             </div>
 
-            {/* Date / Priority / Status */}
+            {/* Due Date / Priority / Status */}
             <div className="flex flex-wrap gap-4">
               <div className="flex-1">
                 <label className="label-text">Due Date</label>
@@ -213,7 +218,6 @@ export default function TaskDetailModal({
                 )}
               </div>
 
-              {/* Assignee dropdown */}
               {showAssigneeEditor && isReporter && (
                 <div className="mt-2 bg-gray-800 p-3 rounded space-y-2 max-h-40 overflow-y-auto">
                   {users.map(u => (
@@ -237,7 +241,7 @@ export default function TaskDetailModal({
             </div>
           </div>
 
-          {/* Buttons */}
+          {/* Action Buttons */}
           <div className="mt-6 flex justify-between">
             {isReporter && (
               <button onClick={remove} className="btn btn-outline btn-error">
@@ -252,23 +256,6 @@ export default function TaskDetailModal({
           </div>
         </div>
       </div>
-
-      {/* DaisyUI Modal for non-reporter */}
-      {showPermissionError && (
-        <div className="modal modal-open">
-          <div className="modal-box bg-base-300 text-white">
-            <h3 className="font-bold text-lg">Permission Denied</h3>
-            <p className="py-4">
-              Only the reporter can update this task's details.
-            </p>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setShowPermissionError(false)}>
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
