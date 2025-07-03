@@ -1,4 +1,4 @@
-# 📌 Task Manager — Team Collaboration App
+# 📌 Teams-Todo — Team Collaboration App
 
 A modern task management web application designed for team collaboration. Built with a robust MERN stack, it allows users to create, assign, track, and update tasks across a team, with flexible filters and drag-and-drop support for real-time workflow updates.
 
