@@ -5,7 +5,7 @@ const initialState = {
   user: null,
   loading: false,
   error: null,
-  userLoaded: false, // ✅ New flag to track whether we checked cookie
+  userLoaded: false, //  flag to track whether we checked cookie
 };
 
 const authSlice = createSlice({
