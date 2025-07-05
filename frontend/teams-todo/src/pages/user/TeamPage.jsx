@@ -1,26 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { getAllUsers } from '../../redux/features/users/userThunks';
 
 const TeamPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+
+  const { users, loading, error } = useSelector(state => state.users);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await axios.get(`${API}/users/all`, { withCredentials: true });
-        setUsers(res.data);
-      } catch (err) {
-        console.error('Failed to fetch team members:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
+    dispatch(getAllUsers());
+  }, [dispatch]);
 
   return (
     <div className="max-w-5xl mx-auto py-10 px-6 text-white">
@@ -28,10 +17,15 @@ const TeamPage = () => {
 
       {loading ? (
         <p className="text-center text-gray-400">Loading team members...</p>
+      ) : error ? (
+        <p className="text-center text-red-500">Error: {error}</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {users.map(user => (
-            <div key={user._id} className="bg-gray-900 rounded-lg p-5 shadow hover:shadow-lg transition">
+            <div
+              key={user._id}
+              className="bg-gray-900 rounded-lg p-5 shadow hover:shadow-lg transition"
+            >
               <div className="flex flex-col items-center">
                 <img
                   src={user.profilePic}

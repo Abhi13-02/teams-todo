@@ -10,7 +10,8 @@ const MainLayout = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
     dispatch(logout())
     navigate('/login')
   }

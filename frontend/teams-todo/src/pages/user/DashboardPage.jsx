@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import axios from 'axios';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { format } from 'date-fns';
 import {
   PieChart, Pie, Cell, Tooltip as PieTooltip, Legend as PieLegend, ResponsiveContainer,
@@ -7,35 +7,26 @@ import {
 } from 'recharts';
 import LoadingScreen from '../../components/LoadingScreen';
 import FloatingFilterBar from '../../components/FloatingFilterBar';
-import { useSelector } from 'react-redux';
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import { getTasks } from '@/redux/features/tasks/taskThunks';
 
 const STATUS_COLORS = {
-  Todo: '#38bdf8',            // Light Neon Blue
-  'In Progress': '#a78bfa',  // Violet, distinct from layout
-  Done: '#22c55e'            // Green
+  Todo: '#38bdf8',
+  'In Progress': '#a78bfa',
+  Done: '#22c55e'
 };
 
 const PRIORITY_COLORS = {
-  Low: '#fef08a',     // Light Yellow
-  Medium: '#f97316',  // Orange
-  High: '#dc2626'     // Red
+  Low: '#fef08a',
+  Medium: '#f97316',
+  High: '#dc2626'
 };
 
 export default function DashboardPage() {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  const { tasks, loading } = useSelector(state => state.tasks);
+  const { user } = useSelector(state => state.auth);
   const [viewFilter, setViewFilter] = useState('assigned');
   const [showGraphs, setShowGraphs] = useState(false);
-  const { user } = useSelector(state => state.auth);
-
-  useEffect(() => {
-    axios.get(`${API}/tasks`, { withCredentials: true })
-      .then(res => setTasks(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
 
   const assignedCount = useMemo(() =>
     tasks.filter(t => t.assignees.some(a => a._id === user._id)).length,
@@ -138,10 +129,7 @@ export default function DashboardPage() {
                   labelLine={false}
                 >
                   {pieData.map((entry, idx) => (
-                    <Cell
-                      key={idx}
-                      fill={STATUS_COLORS[entry.name]}
-                    />
+                    <Cell key={idx} fill={STATUS_COLORS[entry.name]} />
                   ))}
                 </Pie>
                 <PieTooltip contentStyle={{ backgroundColor: '#1f2937', color: '#fff', borderRadius: '0.5rem' }} itemStyle={{ color: '#fff' }} />
@@ -169,7 +157,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Task Table */}
       <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow text-white">
         <h2 className="text-lg sm:text-xl font-semibold mb-4">Tasks</h2>
         <div className="overflow-x-auto">

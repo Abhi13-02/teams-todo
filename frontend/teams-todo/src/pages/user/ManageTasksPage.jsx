@@ -2,21 +2,23 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { differenceInCalendarDays } from 'date-fns';
-import { useSelector } from 'react-redux';
-
 import FloatingFilterBar from '../../components/FloatingFilterBar';
 import LoadingScreen from '../../components/LoadingScreen';
 import TaskCard from '../../components/TaskCard';
 import TaskDetailModal from '../../components/TaskDetailModal';
+import { useDispatch, useSelector } from 'react-redux';
+import { getTasks } from '../../redux/features/tasks/taskThunks';
+import { getAllUsers } from '../../redux/features/users/userThunks';
 
-const API = import.meta.env.VITE_API_BASE_URL;
+
 
 export default function ManageTasksPage() {
-  const [tasks, setTasks] = useState([]);           // always an array
-  const [users, setUsers] = useState([]);           // always an array
-  const [loading, setLoading] = useState(true);
+  const { tasks, loading: taskLoading } = useSelector((state) => state.tasks);
+  const { users, loading: userLoading } = useSelector((state) => state.users);
+  const loading = taskLoading || userLoading;
   const [selectedTask, setSelectedTask] = useState(null);
-
+  const dispatch = useDispatch();
+  
   // Filters
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -26,24 +28,6 @@ export default function ManageTasksPage() {
   const [myTasksFilter, setMyTasksFilter] = useState('all');
 
   const { user } = useSelector((state) => state.auth);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [tRes, uRes] = await Promise.all([
-          axios.get(`${API}/tasks`, { withCredentials: true }),
-          axios.get(`${API}/users/all`, { withCredentials: true }),
-        ]);
-        setTasks(Array.isArray(tRes.data) ? tRes.data : []);
-        setUsers(Array.isArray(uRes.data) ? uRes.data : []);
-      } catch (err) {
-        console.error('Error loading tasks/users:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
 
   const filtered = useMemo(() => {
     if (!Array.isArray(tasks)) {
@@ -191,13 +175,9 @@ export default function ManageTasksPage() {
           users={users}
           onClose={() => setSelectedTask(null)}
           onUpdated={(updated) => {
-            setTasks((ts) =>
-              ts.map((t) => (t._id === updated._id ? updated : t))
-            );
             setSelectedTask(updated);
           }}
           onDeleted={(id) => {
-            setTasks((ts) => ts.filter((t) => t._id !== id));
             setSelectedTask(null);
           }}
         />

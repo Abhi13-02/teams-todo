@@ -1,6 +1,9 @@
-import React from 'react'
+import React, { use } from 'react'
 import { NavLink } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { useEffect } from 'react'
+import { getAllUsers } from '../redux/features/users/userThunks'
+import { getTasks } from '../redux/features/tasks/taskThunks'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -22,6 +25,12 @@ const navItems = [
 
 const Sidebar = ({ isOpen, onClose, onLogout }) => {
   const { user } = useSelector((state) => state.auth)
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(getAllUsers());
+    dispatch(getTasks());
+  }, [dispatch])
 
   return (
     <aside

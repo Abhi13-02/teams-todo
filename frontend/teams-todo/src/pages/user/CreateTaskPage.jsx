@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useDispatch, useSelector } from 'react-redux';
+import { getAllUsers } from '../../redux/features/users/userThunks';
+import { createTask } from '../../redux/features/tasks/taskThunks';
+import { toast } from 'react-toastify';
 
-const API = import.meta.env.VITE_API_BASE_URL;
-
-// 🔐 Zod Schema with full validation
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
@@ -29,9 +29,11 @@ const taskSchema = z.object({
 });
 
 const CreateTaskPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const { users, loading: usersLoading, error } = useSelector((state) => state.users);
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
@@ -51,16 +53,8 @@ const CreateTaskPage = () => {
   });
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await axios.get(`${API}/users/all`, { withCredentials: true });
-        setUsers(res.data);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-      }
-    };
-    fetchUsers();
-  }, []);
+    dispatch(getAllUsers());
+  }, [dispatch]);
 
   const toggleAssignee = (userId) => {
     const current = getValues('assignees') || [];
@@ -70,17 +64,26 @@ const CreateTaskPage = () => {
     setValue('assignees', updated, { shouldValidate: true });
   };
 
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true);
-      await axios.post(`${API}/tasks`, data, { withCredentials: true });
-      navigate('/app/tasks');
-    } catch (err) {
-      console.error('Create task error:', err.response?.data || err.message);
-    } finally {
-      setLoading(false);
-    }
+    const onSubmit = async (data) => {
+      try {
+        setLoading(true);
+        const result = await dispatch(createTask(data));
+        if (createTask.fulfilled.match(result)) {
+          toast.success('Task created successfully!');
+          dispatch(getAllUsers()); // Refresh users in case of new assignee
+          navigate('/app/tasks');
+        } else {
+          toast.error('Failed to create task: ' + result.payload);
+          console.error('Task creation failed:', result.payload);
+        }
+      } catch (err) {
+        toast.error('An unexpected error occurred while creating the task.');
+        console.error('Unexpected error:', err);
+      } finally {
+        setLoading(false);
+      }
   };
+
 
   return (
     <div className="max-w-4xl mx-auto mt-10 px-6 py-8 bg-base-200 shadow-xl rounded-2xl">
@@ -102,7 +105,7 @@ const CreateTaskPage = () => {
         {/* Priority */}
         <div className="w-full">
           <select className="select select-bordered w-full" {...register('priority')}>
-            <option value="Low">🔵 Low</option>
+            <option value="Low">🟡 Low</option>
             <option value="Medium">🟠 Medium</option>
             <option value="High">🔴 High</option>
           </select>
@@ -123,7 +126,7 @@ const CreateTaskPage = () => {
         <div className="w-full">
           <div className="dropdown w-full">
             <label tabIndex={0} className="btn btn-outline w-full bg-base-100">
-              Choose Assignees
+              {usersLoading ? 'Loading Assignees...' : 'Choose Assignees'}
             </label>
             <ul
               tabIndex={0}

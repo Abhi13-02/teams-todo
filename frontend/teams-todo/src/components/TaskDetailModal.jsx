@@ -6,8 +6,8 @@ import LoadingScreen from './LoadingScreen';
 import { useSelector } from 'react-redux';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
-const API = import.meta.env.VITE_API_BASE_URL;
+import { useDispatch } from 'react-redux';
+import { updateTask, deleteTask } from '../redux/features/tasks/taskThunks'; 
 
 export default function TaskDetailModal({
   task,
@@ -63,25 +63,24 @@ export default function TaskDetailModal({
     setDirty(true);
   };
 
+ const dispatch = useDispatch();
+
   const save = async () => {
     if (!isReporter) {
       toast.error('Only the reporter can update this task.');
       return;
     }
+
     setSaving(true);
     try {
-      const res = await axios.put(
-        `${API}/tasks/${task._id}`,
-        form,
-        { withCredentials: true }
-      );
-      onUpdated(res.data);
+      const updatedTask = await dispatch(updateTask({ taskId: task._id, updates: form })).unwrap();
+      onUpdated(updatedTask); // Pass updated task back to parent
       setDirty(false);
       setShowAssigneeEditor(false);
       toast.success('Task updated successfully');
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Save failed');
+      toast.error(err);
     } finally {
       setSaving(false);
     }
@@ -89,16 +88,18 @@ export default function TaskDetailModal({
 
   const remove = async () => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
+
     setDeleting(true);
     try {
-      await axios.delete(`${API}/tasks/${task._id}`, { withCredentials: true });
-      onDeleted(task._id);
-      toast.success('Task deleted successfully');
+      await dispatch(deleteTask(task._id)).unwrap();
+      onDeleted(task._id); // Notify parent to remove task from view
+      toast.success('Task deleted successfully'); // ✅ show only for delete
     } catch (err) {
-      toast.error('Delete failed');
+      toast.error(err);
       setDeleting(false);
     }
   };
+
 
   if (!task || saving || deleting) {
     return <LoadingScreen message={deleting ? 'Deleting…' : 'Saving…'} />;
@@ -106,7 +107,7 @@ export default function TaskDetailModal({
 
   return (
     <>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="fixed inset-0 flex items-center justify-center z-50">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
